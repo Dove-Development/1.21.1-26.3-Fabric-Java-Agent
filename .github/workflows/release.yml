@@ -65,5 +65,5 @@ jobs:
           gh release create "v${{ steps.version.outputs.version }}" \
             build/libs/dove-agent.jar build/libs/dove-agent.jar.sha256 \
             --target "$GITHUB_SHA" \
-            --title "Dove Agent for Fabric 1.21.11 and 26.3 v${{ steps.version.outputs.version }}" \
+            --title "Dove Agent for Fabric 1.21.1, 1.21.11 and 26.3 v${{ steps.version.outputs.version }}" \
             --generate-notes

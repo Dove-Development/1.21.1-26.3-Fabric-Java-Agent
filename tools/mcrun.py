@@ -1,10 +1,10 @@
-"""Starts Fabric 1.21.11 or 26.3 the way the Dove launcher does, for testing the agent.
+"""Starts Fabric 1.21.1, 1.21.11 or 26.3 the way the Dove launcher does, for testing the agent.
 
 The game, its libraries and assets come from the launcher's .minecraft; everything a run writes
 (mods, options, worlds, logs) goes to its own game folder, so the launcher's profiles are never
 touched. JVM flags match the launcher's for Java 25 (jvm.rs gc_flags, modern_runtime.rs).
 
-    python tools/mcrun.py --version 1.21.11 --java <home> --dove <doveclient jar> \
+    python tools/mcrun.py --version 1.21.1|1.21.11|26.3 --java <home> --dove <doveclient jar> \
         [--agent build/libs/dove-agent.jar[=options]] [--pack <folder of FPS Boost jars>] \
         [--mode bench|hud|blockentities|title|none] [--jfr <file>] [--game-dir <dir>]
 
@@ -27,7 +27,8 @@ import ctypes
 from ctypes import wintypes
 
 DATA = Path(os.environ["APPDATA"]) / "DoveClient" / "DoveLauncher" / "data"
-MC = DATA / ".minecraft"
+# DOVE_MC_DIR: another folder laid out like .minecraft, for a version the launcher hasn't installed.
+MC = Path(os.environ["DOVE_MC_DIR"]) if os.environ.get("DOVE_MC_DIR") else DATA / ".minecraft"
 LOADER = "0.19.5"
 
 # Benchmark settings (see Dove's BenchSmoke): no frame cap from vsync or idle input.
@@ -146,7 +147,7 @@ def prepare_game_dir(game_dir, version, dove, pack, fabric_api, fresh, max_fps):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--version", required=True, choices=["1.21.11", "26.3"])
+    parser.add_argument("--version", required=True, choices=["1.21.1", "1.21.11", "26.3"])
     parser.add_argument("--java", required=True, help="Java home")
     parser.add_argument("--dove", required=True)
     parser.add_argument("--fabric-api", required=True)

@@ -1,15 +1,15 @@
 # Dove Agent
 
-A Java agent for **Minecraft 1.21.11 and 26.3 on Fabric**, running on **Java 25**, for Dove Client.
+A Java agent for **Minecraft 1.21.1, 1.21.11 and 26.3 on Fabric**, running on **Java 25**, for Dove Client.
 
 One codebase covers both versions: the only patch targets Fabric Loader, which both versions run
-(0.19.5), not Minecraft, so it doesn't care that 1.21.11 is obfuscated and 26.3 isn't.
+(0.19.5), not Minecraft, so it doesn't care that 1.21.1 and 1.21.11 are obfuscated and 26.3 isn't.
 
 ## What it does
 
 | Patch | Where | Effect |
 |---|---|---|
-| `JarFileSystemPatch` | Fabric Loader (`FileSystemUtil`) | Mod jars, and jars nested in them, are opened read-only where Fabric only reads them. The JDK's zip file system otherwise first asks Windows whether each jar is writable, about 6-12 ms a jar. Fabric opens about 60 at startup: 1.21.11 610 -> 255 ms, 26.3 650 -> 243 ms, so **about 0.35-0.4 s less to the title screen**. Fabric's one writer (the runtime mod remapper) and any call that creates a file keep their original arguments. |
+| `JarFileSystemPatch` | Fabric Loader (`FileSystemUtil`) | Mod jars, and jars nested in them, are opened read-only where Fabric only reads them. The JDK's zip file system otherwise first asks Windows whether each jar is writable, about 6-12 ms a jar. Fabric opens about 60 at startup: 1.21.1 730 -> 290 ms, 1.21.11 610 -> 255 ms, 26.3 650 -> 243 ms, so **about 0.35-0.45 s less to the title screen**. Fabric's one writer (the runtime mod remapper) and any call that creates a file keep their original arguments. |
 
 Off switch: `fastStartup=false`.
 
@@ -20,6 +20,13 @@ Uncapped, average FPS moved +1.5 still and -1.9 turning (medians); capped at 60,
 identical and the 0.1% lows went -8.8 still and +1.4 turning: noise either way.
 
 ## What was checked
+
+**1.21.1 on Java 25 needs no fixes either**, checked the same way as 1.21.11 below: the jar scan
+(42,354 classes) found only the same unused ImmediatelyFast library path; 11 sessions with and
+without FPS Boost on Java 21 and 25 all exit 0 with the same warnings and errors on both; average
+FPS is the same (with FPS Boost 160.0 vs 153.7 still, 147.7 vs 146.3 turning; without it 104.2 vs
+110.4 and 74.7 vs 72.7, medians, Java 21 vs 25) and Java 25's 1% lows are 4 to 17 FPS better.
+ZGC over a whole session: 62 pauses, the longest 0.06 ms, no allocation stalls.
 
 **1.21.11 on Java 25 needs no fixes.** Compared with Java 21 (both with the launcher's flags and
 garbage collector: ZGC on 25, G1 on 21):
@@ -84,10 +91,11 @@ Agent options (comma-separated after `=`):
 - `./gradlew apiScan --args="--jdk21 <JDK 21 home> [--where java.io.File.delete] [--out report.txt] <jar or folder>..."`
   lists every Java API the given jars (and the jars inside them) use that was removed, is marked for
   removal, or behaves differently on Java 25 than on Java 21, checked against both JDKs' own class files.
-- `python tools/mcrun.py --version 1.21.11|26.3 --java <home> --dove <jar> --fabric-api <jar> --game-dir <dir> [--agent build/libs/dove-agent.jar[=options]] [--pack <folder>] [--mode bench] [--rejoin] [--jfr <file>]`
+- `python tools/mcrun.py --version 1.21.1|1.21.11|26.3 --java <home> --dove <jar> --fabric-api <jar> --game-dir <dir> [--agent build/libs/dove-agent.jar[=options]] [--pack <folder>] [--mode bench] [--rejoin] [--jfr <file>]`
   starts the game the way the Dove launcher does (its .minecraft, libraries and Java 25 flags) in a
   separate game folder, and prints the time to the title screen, into the world, and the bench's
   frame rates as one JSON line. `--rejoin` joins the newest world again, plays, and closes the window.
+  For a version the launcher hasn't installed, set `DOVE_MC_DIR` to a folder laid out like `.minecraft`.
 
 ## Project layout
 
@@ -106,6 +114,6 @@ tools/mcrun.py            the launch and benchmark harness
 **Gotcha:** the shaded jar relocates every string literal that looks like `org/objectweb/asm/...`.
 To name the game's own ASM classes, build the string at runtime.
 
-**1.21.11 is obfuscated:** in a real launch its classes are named `net/minecraft/class_1234`
+**1.21.1 and 1.21.11 are obfuscated:** in a real launch its classes are named `net/minecraft/class_1234`
 (Fabric's intermediary names), not the Mojang names seen in the dev environment. A patch on a
-Minecraft class must target the intermediary name on 1.21.11 and the plain name on 26.3.
+Minecraft class must target the intermediary name on 1.21.1 and 1.21.11 and the plain name on 26.3.
