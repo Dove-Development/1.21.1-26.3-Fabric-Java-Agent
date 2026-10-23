@@ -363,7 +363,8 @@ public final class ApiScan {
     /** One JDK's class library, read from its {@code lib/modules} image. */
     static final class Jdk {
         private final FileSystem jrt;
-        private final Map<String, Path> packages = new HashMap<>();
+        /** Package -> the modules the image lists for it (java.awt lists java.datatransfer too). */
+        private final Map<String, List<Path>> packages = new HashMap<>();
         private final Map<String, Model> models = new HashMap<>();
 
         private Jdk(FileSystem jrt) throws IOException {
@@ -371,9 +372,8 @@ public final class ApiScan {
             try (Stream<Path> pkgs = Files.list(jrt.getPath("/packages"))) {
                 for (Path pkg : pkgs.toList()) {
                     try (Stream<Path> modules = Files.list(pkg)) {
-                        modules.findFirst().ifPresent(module ->
-                                packages.put(pkg.getFileName().toString().replace('.', '/'),
-                                        jrt.getPath("/modules", module.getFileName().toString())));
+                        packages.put(pkg.getFileName().toString().replace('.', '/'),
+                                modules.map(module -> jrt.getPath("/modules", module.getFileName().toString())).toList());
                     }
                 }
             }
@@ -403,7 +403,7 @@ public final class ApiScan {
             if (found != null) {
                 return found;
             }
-            // MethodHandle.invokeExact and friends accept any descriptor.
+            // MethodHandle.invokeExact, VarHandle.compareAndSet and friends accept any descriptor.
             if (method && model.polymorphic.contains(name)) {
                 return model.members.values().stream().filter(m -> m.name.equals(name)).findFirst().orElse(null);
             }
@@ -428,8 +428,7 @@ public final class ApiScan {
             }
             Model model = null;
             int slash = name.lastIndexOf('/');
-            Path module = slash > 0 ? packages.get(name.substring(0, slash)) : null;
-            if (module != null) {
+            for (Path module : slash > 0 ? packages.getOrDefault(name.substring(0, slash), List.of()) : List.<Path>of()) {
                 Path file = module.resolve(name + ".class");
                 if (Files.exists(file)) {
                     try {
@@ -437,6 +436,7 @@ public final class ApiScan {
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
+                    break;
                 }
             }
             models.put(name, model);
@@ -488,7 +488,7 @@ public final class ApiScan {
                     @Override
                     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
                         if ((access & Opcodes.ACC_NATIVE) != 0 && (access & Opcodes.ACC_VARARGS) != 0
-                                && descriptor.equals("([Ljava/lang/Object;)Ljava/lang/Object;")) {
+                                && descriptor.startsWith("([Ljava/lang/Object;)")) { // MethodHandle.invoke, VarHandle.set, ...
                             model.polymorphic.add(name);
                         }
                         boolean[] removal = {false};
