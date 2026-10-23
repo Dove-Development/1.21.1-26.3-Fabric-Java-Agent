@@ -1,5 +1,7 @@
 package dev.dove.agent;
 
+import dev.dove.agent.hooks.HybridCpu;
+
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -15,10 +17,13 @@ import java.util.Map;
  *   them out when chasing a problem</li>
  *   <li>{@code timer} - {@code true} to ask Windows for a 1 ms timer</li>
  *   <li>{@code renderPriority} - {@code true} to raise the render thread's priority on Windows</li>
+ *   <li>{@code hybridCpu} - {@code auto} (default): on Windows with performance and efficiency cores,
+ *   Above Normal priority, no efficiency mode and the render thread on the performance cores;
+ *   {@code off}; {@code force}: the same on any CPU, for testing</li>
  * </ul>
  */
 public record AgentOptions(Path logFile, Path cacheDir, boolean debug, boolean fastStartup,
-                           boolean timer, boolean renderPriority) {
+                           boolean timer, boolean renderPriority, HybridCpu.Mode hybridCpu) {
 
     public static AgentOptions parse(String args) {
         Map<String, String> values = new HashMap<>();
@@ -43,6 +48,7 @@ public record AgentOptions(Path logFile, Path cacheDir, boolean debug, boolean f
         boolean fastStartup = !"false".equalsIgnoreCase(values.get("fastStartup"));
         boolean timer = Boolean.parseBoolean(values.get("timer"));
         boolean renderPriority = Boolean.parseBoolean(values.get("renderPriority"));
-        return new AgentOptions(log, cache, debug, fastStartup, timer, renderPriority);
+        HybridCpu.Mode hybridCpu = HybridCpu.Mode.parse(values.get("hybridCpu"));
+        return new AgentOptions(log, cache, debug, fastStartup, timer, renderPriority, hybridCpu);
     }
 }

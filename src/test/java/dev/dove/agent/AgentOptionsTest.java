@@ -36,6 +36,7 @@ class AgentOptionsTest {
         // Measured without a gain (see the README), so off unless asked for.
         assertFalse(options.timer());
         assertFalse(options.renderPriority());
+        assertEquals(dev.dove.agent.hooks.HybridCpu.Mode.AUTO, options.hybridCpu());
     }
 
     @Test
